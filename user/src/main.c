@@ -8,19 +8,18 @@ void NVIC_Configuration(u8 num);
 
 int main(void)
 {
-    NVIC_Configuration(1);
+    NVIC_Configuration(0);
     LED_Configuration();
-    USART1_Configuration(115200);
+    UART5_Configuration(115200);
     TIM2_Configuration(1000,72);
 
   while(1)
   {
     LED_Flash();
-
   }
 }
 
 void NVIC_Configuration(u8 num)
 {
-    NVIC_SetPriorityGrouping(NVIC_PriorityGroup_1);
+    NVIC_SetPriorityGrouping(NVIC_PriorityGroup_0);
 }

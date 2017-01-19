@@ -34,35 +34,41 @@ void USART1_Configuration(u32 bdrate)
 
 }
 
-void USART2_Configuration(u32 bdrate)
+void UART5_Configuration(u32 bdrate)
 {
 	GPIO_InitTypeDef GPIO_InitStructure;
 	USART_InitTypeDef USART_InitStructure;
+	NVIC_InitTypeDef   NVIC_InitStructure;
 
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2,ENABLE);
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA|RCC_APB2Periph_AFIO,ENABLE);
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_UART5,ENABLE);
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC|RCC_APB2Periph_GPIOD|RCC_APB2Periph_AFIO,ENABLE);
 
-	//USART1-----bd=115200
-	GPIO_InitStructure.GPIO_Speed=GPIO_Speed_50MHz;
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_12;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Init(GPIOC, &GPIO_InitStructure);
 
-	GPIO_InitStructure.GPIO_Pin=GPIO_Pin_2;											//串口输出
-	GPIO_InitStructure.GPIO_Mode=GPIO_Mode_AF_PP;
-	GPIO_Init(GPIOA,&GPIO_InitStructure);
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Init(GPIOD, &GPIO_InitStructure);
 
-	GPIO_InitStructure.GPIO_Pin=GPIO_Pin_3;												//串口输入
-	GPIO_InitStructure.GPIO_Mode=GPIO_Mode_IN_FLOATING;
-	GPIO_Init(GPIOA,&GPIO_InitStructure);
-
-	USART_InitStructure.USART_BaudRate=bdrate;
+	USART_InitStructure.USART_BaudRate = bdrate;
 	USART_InitStructure.USART_WordLength=USART_WordLength_8b;
 	USART_InitStructure.USART_StopBits=USART_StopBits_1;
 	USART_InitStructure.USART_Parity=USART_Parity_No;
 	USART_InitStructure.USART_HardwareFlowControl=USART_HardwareFlowControl_None;
-	USART_InitStructure.USART_Mode=USART_Mode_Rx|USART_Mode_Tx;
-	USART_Init(USART2,&USART_InitStructure);
+	USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;                 //发送和接受使能
+	USART_Init(UART5, &USART_InitStructure);                                       //初始化串口2
+	USART_ITConfig(UART5, USART_IT_RXNE, DISABLE);                                  //接收中断使能
+	USART_Cmd(UART5, ENABLE);                                                      //使能时串口2
+	//USART_ClearITPendingBit(UART5, USART_IT_TC);                                   //清除中断TC位
 
-	USART_Cmd(USART2,ENABLE);																		//串口使能
-	USART_ITConfig(USART2,USART_IT_RXNE,ENABLE);
+	NVIC_InitStructure.NVIC_IRQChannel = UART5_IRQn;	         //串口2中断
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 3;    //抢占优先级3
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;	         //子优先级3
+	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;           	 //IRQ通道使能
+	NVIC_Init(&NVIC_InitStructure);                              //根据指定的参数初始化VIC寄存器
 
 }
 
@@ -110,25 +116,17 @@ void USART2_IRQHandler(void)
 	}
 }
 
-void USART3_IRQHandler(void)
+//UASRT2的中断函数
+void UART5_IRQHandler(void)                	//串口1中断服务程序
 {
-	u8 ch;
-	if(USART_GetITStatus(USART3,USART_IT_RXNE))			//接收中断
+	//u8 Res;
+	if(USART_GetITStatus(UART5, USART_IT_RXNE) != RESET)  //接收中断(接收到的数据必须是0x0d 0x0a结尾)
 	{
-		ch=USART_ReceiveData(USART3);
-		if(Rx3.RxFlag==0)
-		{
-			Rx3.StaFlag=1;
-			Rx3.RxCount=0;
-		}
-		Rx3.RxBuff[Rx3.RxCount]=ch;
-
-		Rx3.RxCount++;
-		Rx3.RxDelay=10;
+		USART_ClearITPendingBit(UART5, USART_IT_RXNE);
 	}
-	if(USART_GetITStatus(USART3,USART_IT_RXNE))			//发送中断
+	else if(USART_GetITStatus(UART5, USART_IT_TXE) != RESET)
 	{
-
+		USART_ClearITPendingBit(UART5, USART_IT_TC);
 	}
 }
 
@@ -168,21 +166,30 @@ void USART2_SendNChar(u8 *str,u8 len)
 	}
 }
 
-void USART3_SendChar(u8 ch)
+void UART5_SendNData(u8 *str,u16 len)
 {
-	USART_SendData(USART3,ch);
-	while(USART_GetFlagStatus(USART3,USART_FLAG_TC)==RESET);
-	USART_ClearFlag(USART3,USART_FLAG_TC);
+ 	unsigned int i = 0;
+	for(i = 0;i < len;i++)
+	{
+		USART_SendData(UART5,*str);
+		while(USART_GetFlagStatus(UART5,USART_FLAG_TC)==0);
+		str++;
+	}
 }
 
-void USART3_SendNChar(u8 *str,u8 len)
+void UART5_SendData(u8 ch)
 {
-	u8 i=0;
-	for(i=0;i<len;i++)
+	USART_SendData(UART5,ch);
+	while(USART_GetFlagStatus(UART5,USART_FLAG_TC)==0);
+}
+
+void UART5_SendString(u8 *str)
+{
+	while(*str)
 	{
-		USART_SendData(USART3,*(str+i));
-		while(USART_GetFlagStatus(USART3,USART_FLAG_TC)==RESET);
-		USART_ClearFlag(USART3,USART_FLAG_TC);
+		USART_SendData(UART5,*str);
+		while(USART_GetFlagStatus(UART5,USART_FLAG_TC)==0);
+		str++;
 	}
 }
 
@@ -192,16 +199,9 @@ void Clear_Buff(u8 *str,u16 len)
 	for(i=0;i<len;i++)		*(str+i)=0;
 }
 
-int _write(int file, char* ptr, int len)
+int __io_putchar(int ch)
 {
-	int i=0;
-	int cnt=0;
-	for(i=0;i<len;i++)
-	{
-		USART_SendData(USART1,*ptr);
-		while(USART_GetFlagStatus(USART1,USART_FLAG_TC)==RESET);
-		ptr++;
-		cnt++;
-	}
-	return cnt;
+	USART_SendData(UART5,(unsigned char)ch);
+	while(USART_GetFlagStatus(UART5,USART_FLAG_TC)==RESET);
+	return ch;
 }

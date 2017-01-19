@@ -12,19 +12,12 @@ void LED_Configuration(void)
 {
 	GPIO_InitTypeDef GPIO_InitStructure;
 
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB|RCC_APB2Periph_GPIOF,ENABLE);
+		RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC,ENABLE);
 
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0;
-	GPIO_Init(GPIOB,&GPIO_InitStructure);
-
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_7|GPIO_Pin_8;
-	GPIO_Init(GPIOF,&GPIO_InitStructure);
-	LED1(1);
-	//LED2(1);
-	//LED3(1);
+		GPIO_InitStructure.GPIO_Pin =GPIO_Pin_0 | GPIO_Pin_6;//LED
+		GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;  //翻转速率50Mhz
+		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;   //推免输出方式
+		GPIO_Init(GPIOC, &GPIO_InitStructure);             //初始化PB8.9.14.15
 }
 
 void LED_Flash(void)
