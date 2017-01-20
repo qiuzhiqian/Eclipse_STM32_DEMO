@@ -1,6 +1,10 @@
 #include "usart.h"
 #include "stdio.h"
 #include "stm32f10x.h"
+
+#include <stdio.h>
+#include <stdarg.h>
+
 USART_Rx Rx1,Rx2,Rx3;
 
 void USART1_Configuration(u32 bdrate)
@@ -204,4 +208,20 @@ int __io_putchar(int ch)
 	USART_SendData(UART5,(unsigned char)ch);
 	while(USART_GetFlagStatus(UART5,USART_FLAG_TC)==RESET);
 	return ch;
+}
+
+static char stdbuff[512];
+int My_printf(const char *format,...)
+{
+	int n;
+	va_list ap;
+	va_start(ap,format);
+
+	n=vsprintf(stdbuff,format,ap);
+
+	va_end(ap);
+
+	UART5_SendNData(stdbuff,n);
+
+	return n;
 }

@@ -30,5 +30,6 @@ void LED_Flash(void)
 		//USART1_SendChar('A');
 		printf("123\n");
 		watch_count++;
+		My_printf("watch_count=%d\n",watch_count);
 	}
 }

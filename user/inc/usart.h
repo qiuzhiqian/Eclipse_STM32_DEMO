@@ -30,4 +30,6 @@ void UART5_SendString(u8 *str);
 
 void Clear_Buff(u8 *str,u16 len);
 
+int My_printf(const char *format,...);
+
 #endif
